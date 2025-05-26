@@ -1,0 +1,289 @@
+﻿@{
+    ViewData["Title"] = "Anketler";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="container">
+    <h2 class="mt-4 mb-4">
+        Anketler
+        <button class="btn btn-success float-right" data-toggle="modal" data-target="#addSurveyModal">
+            <i class="fa fa-plus"></i> Yeni Anket
+        </button>
+    </h2>
+    <table class="table table-bordered mt-3 bg-white" id="surveyTable">
+        <thead>
+            <tr>
+                <th>Başlık</th>
+                <th>Açıklama</th>
+                <th>Oluşturan</th>
+                <th>Oluşturma Tarihi</th>
+                <th>Başlangıç</th>
+                <th>Bitiş</th>
+                <th>Aktif</th>
+                <th>İşlem</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<!-- Anket Ekle Modal -->
+<div class="modal fade" id="addSurveyModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <form id="addSurveyForm" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Anket Ekle</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group"><input type="text" class="form-control" id="addSurveyTitle" placeholder="Başlık" required></div>
+                <div class="form-group"><textarea class="form-control" id="addSurveyDescription" placeholder="Açıklama" required></textarea></div>
+                <div class="form-group">
+                    <label>Başlangıç Tarihi</label>
+                    <input type="date" class="form-control" id="addSurveyStartDate">
+                </div>
+                <div class="form-group">
+                    <label>Bitiş Tarihi</label>
+                    <input type="date" class="form-control" id="addSurveyEndDate">
+                </div>
+                <label><b>Sorular</b></label>
+                <div id="survey-questions">
+                    <div class="input-group mb-2 question-row">
+                        <input type="text" class="form-control question-text" placeholder="Soru metni" required>
+                        <select class="form-control question-type" style="max-width:150px;margin-left:8px;">
+                            <option value="0">Kısa Metin</option>
+                            <option value="1">Çoktan Seçmeli</option>
+                            <option value="2">Checkbox</option>
+                            <option value="3">Puanlama</option>
+                            <option value="4">Evet/Hayır</option>
+                        </select>
+                        <div class="input-group-append">
+                            <button class="btn btn-danger remove-question" type="button">&times;</button>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm mb-2" id="add-question-btn"><i class="fa fa-plus"></i> Soru Ekle</button>
+                <div id="addSurveyError" class="text-danger"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Kaydet</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Anket Düzenle Modal -->
+<div class="modal fade" id="editSurveyModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <form id="editSurveyForm" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Anket Düzenle</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editSurveyId">
+                <div class="form-group"><input type="text" class="form-control" id="editSurveyTitle" placeholder="Başlık" required></div>
+                <div class="form-group"><textarea class="form-control" id="editSurveyDescription" placeholder="Açıklama" required></textarea></div>
+                <div class="form-group">
+                    <label>Başlangıç Tarihi</label>
+                    <input type="date" class="form-control" id="editSurveyStartDate">
+                </div>
+                <div class="form-group">
+                    <label>Bitiş Tarihi</label>
+                    <input type="date" class="form-control" id="editSurveyEndDate">
+                </div>
+                <div class="form-group">
+                    <label>Aktif mi?</label>
+                    <input type="checkbox" id="editSurveyIsActive">
+                </div>
+                <div id="editSurveyError" class="text-danger"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Güncelle</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const API = "https://localhost:7008/api/Surveys";
+        const AUTH = { "Authorization": "Bearer " + localStorage.getItem("token") };
+
+        // Anketleri getir
+        function loadSurveys() {
+            $.ajax({
+                url: API,
+                headers: AUTH,
+                success: function(data) {
+                    let html = "";
+                    data.forEach(s => {
+                        html += `<tr>
+                            <td>${s.title}</td>
+                            <td>${s.description}</td>
+                            <td>${s.createdByName ?? ''}</td>
+                            <td>${s.createdDate ? (new Date(s.createdDate)).toLocaleDateString() : ''}</td>
+                            <td>${s.startDate ? (new Date(s.startDate)).toLocaleDateString() : ''}</td>
+                            <td>${s.endDate ? (new Date(s.endDate)).toLocaleDateString() : ''}</td>
+                            <td>${s.isActive ? "Evet" : "Hayır"}</td>
+                            <td>
+                                <button type="button" class="btn btn-info btn-sm edit-btn" data-id="${s.id}"><i class="fa fa-edit"></i></button>
+                                <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="${s.id}"><i class="fa fa-trash"></i></button>
+                            </td>
+                        </tr>`;
+                    });
+                    $("#surveyTable tbody").html(html);
+
+                    // Edit ve Delete butonlarına dinamik olarak event bağla
+                    $(".edit-btn").off("click").on("click", function() {
+                        let id = $(this).data("id");
+                        showEditSurvey(id);
+                    });
+                    $(".delete-btn").off("click").on("click", function() {
+                        let id = $(this).data("id");
+                        deleteSurvey(id);
+                    });
+                }
+            });
+        }
+        loadSurveys();
+
+        // Dinamik soru ekle/kaldır
+        $("#add-question-btn").on("click", function() {
+            $("#survey-questions").append(`
+              <div class="input-group mb-2 question-row">
+                <input type="text" class="form-control question-text" placeholder="Soru metni" required>
+                <select class="form-control question-type" style="max-width:150px;margin-left:8px;">
+                    <option value="0">Kısa Metin</option>
+                    <option value="1">Çoktan Seçmeli</option>
+                    <option value="2">Checkbox</option>
+                    <option value="3">Puanlama</option>
+                    <option value="4">Evet/Hayır</option>
+                </select>
+                <div class="input-group-append">
+                  <button class="btn btn-danger remove-question" type="button">&times;</button>
+                </div>
+              </div>
+            `);
+        });
+        $("#survey-questions").on("click", ".remove-question", function() {
+            if ($(".question-row").length > 1)
+                $(this).closest(".question-row").remove();
+        });
+
+        // Anket ekle
+        $("#addSurveyForm").on("submit", function(e) {
+            e.preventDefault();
+            $("#addSurveyError").text("");
+
+            let questions = [];
+            $(".question-row").each(function(idx) {
+                let val = $(this).find(".question-text").val().trim();
+                let typeValue = parseInt($(this).find(".question-type").val());
+                if (val !== "") {
+                    questions.push({
+                        text: val,
+                        type: typeValue,
+                        isRequired: true,
+                        order: idx + 1,
+                        options: []
+                    });
+                }
+            });
+            if (questions.length === 0) {
+                $("#addSurveyError").text("En az bir soru eklemelisiniz!");
+                return;
+            }
+
+            let startDate = $("#addSurveyStartDate").val() || null;
+            let endDate = $("#addSurveyEndDate").val() || null;
+
+            $.ajax({
+                url: API,
+                method: "POST",
+                headers: AUTH,
+                contentType: "application/json",
+                data: JSON.stringify({
+                    title: $("#addSurveyTitle").val(),
+                    description: $("#addSurveyDescription").val(),
+                    startDate: startDate,
+                    endDate: endDate,
+                    questions: questions
+                }),
+                success: function() {
+                    $("#addSurveyModal").modal('hide');
+                    loadSurveys();
+                },
+                error: function(xhr) {
+                    let msg = "Anket eklenemedi!";
+                    if (xhr.responseJSON && xhr.responseJSON.errors) {
+                        msg += "<br>" + Object.values(xhr.responseJSON.errors).flat().join("<br>");
+                    }
+                    $("#addSurveyError").html(msg);
+                }
+            });
+        });
+
+        // Anketi düzenleme formunu aç
+        function showEditSurvey(id) {
+            $.ajax({
+                url: API + "/" + id,
+                headers: AUTH,
+                success: function(s) {
+                    $("#editSurveyId").val(s.id);
+                    $("#editSurveyTitle").val(s.title);
+                    $("#editSurveyDescription").val(s.description);
+                    $("#editSurveyStartDate").val(s.startDate ? s.startDate.substring(0,10) : "");
+                    $("#editSurveyEndDate").val(s.endDate ? s.endDate.substring(0,10) : "");
+                    $("#editSurveyIsActive").prop("checked", s.isActive);
+                    $("#editSurveyModal").modal('show');
+                }
+            });
+        }
+
+        // Anketi güncelle (tüm gerekli alanları gönderiyoruz!)
+        $("#editSurveyForm").on("submit", function(e) {
+            e.preventDefault();
+            $("#editSurveyError").text("");
+            const id = $("#editSurveyId").val();
+            const startDate = $("#editSurveyStartDate").val() || null;
+            const endDate = $("#editSurveyEndDate").val() || null;
+            $.ajax({
+                url: API + "/" + id,
+                method: "PUT",
+                headers: AUTH,
+                contentType: "application/json",
+                data: JSON.stringify({
+                    title: $("#editSurveyTitle").val(),
+                    description: $("#editSurveyDescription").val(),
+                    startDate: startDate,
+                    endDate: endDate,
+                    isActive: $("#editSurveyIsActive").is(":checked")
+                }),
+                success: function() {
+                    $("#editSurveyModal").modal('hide');
+                    loadSurveys();
+                },
+                error: function(xhr) {
+                    let msg = "Anket güncellenemedi!";
+                    if (xhr.responseJSON && xhr.responseJSON.errors) {
+                        msg += "<br>" + Object.values(xhr.responseJSON.errors).flat().join("<br>");
+                    }
+                    $("#editSurveyError").html(msg);
+                }
+            });
+        });
+
+        // Anket sil
+        function deleteSurvey(id) {
+            if(!confirm("Anket silinsin mi?")) return;
+            $.ajax({
+                url: API + "/" + id,
+                method: "DELETE",
+                headers: AUTH,
+                success: function() { loadSurveys(); }
+            });
+        }
+    </script>
+}

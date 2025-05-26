@@ -1,0 +1,82 @@
+﻿@{
+    Layout = null;
+    ViewData["Title"] = "Giriş Yap";
+}
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Giriş Yap</title>
+    <!-- SB Admin 2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #4e73df;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-primary">
+    <div class="container">
+        <!-- Outer Row -->
+        <div class="row justify-content-center">
+            <div class="col-xl-5 col-lg-6 col-md-9">
+                <div class="card o-hidden border-0 shadow-lg my-5">
+                    <div class="card-body p-0">
+                        <!-- Nested Row within Card Body -->
+                        <div class="p-5">
+                            <div class="text-center mb-4">
+                                <h1 class="h4 text-gray-900 mb-2">Hoşgeldiniz!</h1>
+                                <p class="mb-4">Lütfen giriş yapın</p>
+                            </div>
+                            <form id="loginForm" class="user">
+                                <div class="form-group">
+                                    <input type="text" class="form-control form-control-user" id="username" placeholder="Kullanıcı Adı" required>
+                                </div>
+                                <div class="form-group">
+                                    <input type="password" class="form-control form-control-user" id="password" placeholder="Şifre" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-user btn-block">Giriş Yap</button>
+                                <hr>
+                                <a href="/Home/Register" class="btn btn-secondary btn-user btn-block">Kayıt Ol</a>
+                            </form>
+                            <hr>
+                            <div id="loginError" class="text-danger text-center" style="display:none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JQuery & SB Admin 2 JS -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $("#loginForm").submit(function (e) {
+            e.preventDefault();
+            $("#loginError").hide();
+            $.ajax({
+                url: "https://localhost:7008/api/Auth/login",
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    userName: $("#username").val(),
+                    password: $("#password").val()
+                }),
+                success: function (res) {
+                    localStorage.setItem("token", res.token);
+                    window.location.href = "/";
+                },
+                error: function (xhr) {
+                    $("#loginError").text("Giriş başarısız! Kullanıcı adı veya şifre hatalı.").show();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

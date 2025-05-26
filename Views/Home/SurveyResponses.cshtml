@@ -1,0 +1,56 @@
+﻿@{
+    Layout = null;
+    ViewData["Title"] = "Anket Yanıtları";
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <title>Anket Yanıtları</title>
+    <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body>
+    <div class="container mt-5">
+        <h2 class="mb-4">Yanıtlar</h2>
+        <table class="table table-bordered" id="responseTable">
+            <thead>
+                <tr>
+                    <th>Kullanıcı</th>
+                    <th>Yanıt Tarihi</th>
+                    <th>Detay</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- AJAX ile doldurulacak -->
+            </tbody>
+        </table>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script>
+        var urlParams = new URLSearchParams(window.location.search);
+        var surveyId = urlParams.get('surveyId');
+        $(function(){
+            $.ajax({
+                url: "https://localhost:7008/api/SurveyResponses/survey/" + surveyId,
+                headers: {
+                    "Authorization": "Bearer " + localStorage.getItem("token")
+                },
+                success: function(data) {
+                    let html = "";
+                    data.forEach(function(r){
+                        html += `<tr>
+                            <td>${r.userName ?? ''}</td>
+                            <td>${r.createdDate ? r.createdDate.substring(0,10) : ''}</td>
+                            <td>
+                                <a href="#" class="btn btn-info btn-sm">Detay</a>
+                            </td>
+                        </tr>`;
+                    });
+                    $("#responseTable tbody").html(html);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

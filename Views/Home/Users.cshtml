@@ -1,0 +1,196 @@
+﻿@{
+    ViewData["Title"] = "Kullanıcılar";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="container">
+    <h2 class="mt-4 mb-4">
+        Kullanıcılar
+        <button class="btn btn-success float-right" data-toggle="modal" data-target="#addUserModal">
+            <i class="fa fa-plus"></i> Yeni Kullanıcı
+        </button>
+    </h2>
+    <table class="table table-bordered mt-3 bg-white" id="usersTable">
+        <thead>
+            <tr>
+                <th>Kullanıcı Adı</th>
+                <th>Ad Soyad</th>
+                <th>Email</th>
+                <th>Durum</th>
+                <th>İşlem</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<!-- Kullanıcı Ekle Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <form id="addUserForm" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Kullanıcı Ekle</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group"><input type="text" class="form-control" id="addUserName" placeholder="Kullanıcı Adı" required></div>
+                <div class="form-group"><input type="text" class="form-control" id="addFirstName" placeholder="Ad" required></div>
+                <div class="form-group"><input type="text" class="form-control" id="addLastName" placeholder="Soyad" required></div>
+                <div class="form-group"><input type="email" class="form-control" id="addEmail" placeholder="Email" required></div>
+                <div class="form-group"><input type="password" class="form-control" id="addPassword" placeholder="Şifre" required></div>
+                <div id="addUserError" class="text-danger"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Kaydet</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Kullanıcı Düzenle Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <form id="editUserForm" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Kullanıcı Düzenle</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editUserId">
+                <div class="form-group"><input type="text" class="form-control" id="editUserName" placeholder="Kullanıcı Adı" required></div>
+                <div class="form-group"><input type="text" class="form-control" id="editFirstName" placeholder="Ad" required></div>
+                <div class="form-group"><input type="text" class="form-control" id="editLastName" placeholder="Soyad" required></div>
+                <div class="form-group"><input type="email" class="form-control" id="editEmail" placeholder="Email" required></div>
+                <div id="editUserError" class="text-danger"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Güncelle</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const API = "https://localhost:7008/api/Users";
+        const AUTH = { "Authorization": "Bearer " + localStorage.getItem("token") };
+
+        // Kullanıcıları getir
+        function loadUsers() {
+            $.ajax({
+                url: API,
+                headers: AUTH,
+                success: function(users) {
+                    let html = "";
+                    users.forEach(u => {
+                        html += `<tr>
+                            <td>${u.userName}</td>
+                            <td>${u.firstName} ${u.lastName}</td>
+                            <td>${u.email}</td>
+                            <td>${u.isActive ? "Aktif" : "Pasif"}</td>
+                            <td>
+                                <button type="button" class="btn btn-info btn-sm edit-btn" data-id="${u.id}"><i class="fa fa-edit"></i></button>
+                                <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="${u.id}"><i class="fa fa-trash"></i></button>
+                            </td>
+                        </tr>`;
+                    });
+                    $("#usersTable tbody").html(html);
+
+                    // Edit ve Delete butonlarına dinamik olarak event bağla
+                    $(".edit-btn").off("click").on("click", function() {
+                        let id = $(this).data("id");
+                        showEditUser(id);
+                    });
+                    $(".delete-btn").off("click").on("click", function() {
+                        let id = $(this).data("id");
+                        deleteUser(id);
+                    });
+                }
+            });
+        }
+        loadUsers();
+
+        // Kullanıcı ekle
+        $("#addUserForm").on("submit", function(e) {
+            e.preventDefault();
+            $("#addUserError").html("");
+            $.ajax({
+                url: "https://localhost:7008/api/Auth/register",
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    userName: $("#addUserName").val(),
+                    email: $("#addEmail").val(),
+                    firstName: $("#addFirstName").val(),
+                    lastName: $("#addLastName").val(),
+                    password: $("#addPassword").val()
+                }),
+                success: function() {
+                    $("#addUserModal").modal('hide');
+                    loadUsers();
+                },
+                error: function(xhr) {
+                    let msg = "Kullanıcı eklenemedi!";
+                    if(xhr.responseJSON && Array.isArray(xhr.responseJSON)){
+                        msg += "<br>" + xhr.responseJSON.map(e => e.description).join("<br>");
+                    }
+                    $("#addUserError").html(msg);
+                }
+            });
+        });
+
+        // Kullanıcıyı düzenleme formunu aç
+        function showEditUser(id) {
+            $.ajax({
+                url: API + "/" + id,
+                headers: AUTH,
+                success: function(u) {
+                    $("#editUserId").val(u.id);
+                    $("#editUserName").val(u.userName);
+                    $("#editFirstName").val(u.firstName);
+                    $("#editLastName").val(u.lastName);
+                    $("#editEmail").val(u.email);
+                    $("#editUserModal").modal('show');
+                }
+            });
+        }
+
+        // Kullanıcıyı güncelle
+        $("#editUserForm").on("submit", function(e) {
+            e.preventDefault();
+            $("#editUserError").html("");
+            const id = $("#editUserId").val();
+            $.ajax({
+                url: API + "/" + id,
+                method: "PUT",
+                headers: AUTH,
+                contentType: "application/json",
+                data: JSON.stringify({
+                    userName: $("#editUserName").val(),
+                    firstName: $("#editFirstName").val(),
+                    lastName: $("#editLastName").val(),
+                    email: $("#editEmail").val()
+                }),
+                success: function() {
+                    $("#editUserModal").modal('hide');
+                    loadUsers();
+                },
+                error: function(xhr) {
+                    $("#editUserError").text("Kullanıcı güncellenemedi!");
+                }
+            });
+        });
+
+        // Kullanıcı sil
+        function deleteUser(id) {
+            if(!confirm("Kullanıcı silinsin mi?")) return;
+            $.ajax({
+                url: API + "/" + id,
+                method: "DELETE",
+                headers: AUTH,
+                success: function() { loadUsers(); }
+            });
+        }
+    </script>
+}

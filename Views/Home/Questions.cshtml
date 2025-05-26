@@ -1,0 +1,278 @@
+﻿@{
+    ViewData["Title"] = "Sorular";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="container">
+    <h2 class="mt-4 mb-4">Sorular</h2>
+    <button class="btn btn-success mb-3" id="addQuestionBtn"><i class="fa fa-plus"></i> Soru Ekle</button>
+    <table class="table table-bordered bg-white" id="questionsTable">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Anket</th>
+                <th>Soru Metni</th>
+                <th>Tip</th>
+                <th>Zorunlu</th>
+                <th>Seçenekler</th>
+                <th>İşlem</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<!-- Soru Ekle/Düzenle Modalı -->
+<div class="modal fade" id="editQuestionModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <form id="editQuestionForm" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editQuestionModalTitle">Soru Ekle</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editQuestionSurveyId">
+                <input type="hidden" id="editQuestionId">
+                <div class="form-group">
+                    <label>Anket</label>
+                    <select class="form-control" id="editQuestionSurveySelect" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Soru Metni</label>
+                    <input type="text" class="form-control" id="editQuestionText" required>
+                </div>
+                <div class="form-group">
+                    <label>Tip</label>
+                    <select class="form-control" id="editQuestionType" required>
+                        <option value="0">Kısa Metin</option>
+                        <option value="1">Çoktan Seçmeli</option>
+                        <option value="2">Checkbox</option>
+                        <option value="3">Puanlama</option>
+                        <option value="4">Evet/Hayır</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Zorunlu mu?</label>
+                    <input type="checkbox" id="editQuestionIsRequired">
+                </div>
+                <div class="form-group">
+                    <label>Seçenekler (Her satıra bir seçenek, sadece Çoktan Seçmeli/Checkbox için)</label>
+                    <textarea class="form-control" id="editQuestionOptions" rows="3"></textarea>
+                </div>
+                <div id="editQuestionError" class="text-danger"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Kaydet</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const API = "https://localhost:7008/api/Surveys";
+        const AUTH = { "Authorization": "Bearer " + localStorage.getItem("token") };
+
+        let allSurveys = [];
+
+        function loadQuestions() {
+            $.ajax({
+                url: API,
+                headers: AUTH,
+                success: function(data) {
+                    allSurveys = data;
+                    renderSurveySelect();
+                    let qlist = [];
+                    data.forEach(survey => {
+                        if (survey.questions && survey.questions.length > 0) {
+                            survey.questions.forEach(q => {
+                                qlist.push({
+                                    surveyTitle: survey.title,
+                                    surveyId: survey.id,
+                                    ...q
+                                });
+                            });
+                        }
+                    });
+                    let html = "";
+                    if (qlist.length === 0) {
+                        html = "<tr><td colspan='7'>Hiç soru yok.</td></tr>";
+                    } else {
+                        qlist.forEach((q, i) => {
+                            html += `<tr>
+                                <td>${i+1}</td>
+                                <td>${q.surveyTitle}</td>
+                                <td>${q.text}</td>
+                                <td>${questionTypeToText(q.type)}</td>
+                                <td>${q.isRequired ? "Evet" : "Hayır"}</td>
+                                <td>${q.options && q.options.length > 0 ? q.options.map(o => o.text).join(", ") : "-"}</td>
+                                <td>
+                                    <button class="btn btn-info btn-sm edit-q-btn"
+                                        data-id="${q.id}" data-surveyid="${q.surveyId}">
+                                        <i class="fa fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-danger btn-sm delete-q-btn"
+                                        data-id="${q.id}" data-surveyid="${q.surveyId}">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>`;
+                        });
+                    }
+                    $("#questionsTable tbody").html(html);
+
+                    $(".edit-q-btn").off("click").on("click", function() {
+                        let qid = $(this).data("id");
+                        let sid = $(this).data("surveyid");
+                        editQuestion(sid, qid);
+                    });
+                    $(".delete-q-btn").off("click").on("click", function() {
+                        let qid = $(this).data("id");
+                        let sid = $(this).data("surveyid");
+                        deleteQuestion(sid, qid);
+                    });
+                }
+            });
+        }
+
+        // Selectbox için anketleri doldur
+        function renderSurveySelect() {
+            let $sel = $("#editQuestionSurveySelect");
+            $sel.empty();
+            allSurveys.forEach(s => {
+                $sel.append(`<option value="${s.id}">${s.title}</option>`);
+            });
+        }
+
+        // Soru Ekle modali aç
+        $("#addQuestionBtn").on("click", function() {
+            $("#editQuestionModalTitle").text("Soru Ekle");
+            $("#editQuestionId").val("");
+            $("#editQuestionText").val("");
+            $("#editQuestionType").val("0");
+            $("#editQuestionIsRequired").prop("checked", false);
+            $("#editQuestionOptions").val("");
+            renderSurveySelect();
+            $("#editQuestionSurveySelect").val(allSurveys.length > 0 ? allSurveys[0].id : "");
+            $("#editQuestionModal").modal("show");
+            $("#editQuestionError").text("");
+        });
+
+        // Soru düzenle modalı aç
+        function editQuestion(surveyId, questionId) {
+            let survey = allSurveys.find(s => s.id == surveyId);
+            if (!survey) return;
+            let question = (survey.questions || []).find(q => q.id == questionId);
+            if (!question) return;
+            $("#editQuestionModalTitle").text("Soru Düzenle");
+            $("#editQuestionSurveySelect").val(surveyId);
+            $("#editQuestionId").val(questionId);
+            $("#editQuestionText").val(question.text);
+            $("#editQuestionType").val(question.type);
+            $("#editQuestionIsRequired").prop("checked", question.isRequired);
+            // Seçenekleri textarea'ya geçir
+            if (question.options && question.options.length > 0)
+                $("#editQuestionOptions").val(question.options.map(o => o.text).join("\n"));
+            else
+                $("#editQuestionOptions").val("");
+            $("#editQuestionModal").modal("show");
+            $("#editQuestionError").text("");
+        }
+
+        // Soru kaydet
+        $("#editQuestionForm").on("submit", function(e) {
+            e.preventDefault();
+            $("#editQuestionError").text("");
+
+            let surveyId = $("#editQuestionSurveySelect").val();
+            let questionId = $("#editQuestionId").val();
+            let text = $("#editQuestionText").val();
+            let type = Number($("#editQuestionType").val());
+            let isRequired = $("#editQuestionIsRequired").is(":checked");
+            let optionsRaw = $("#editQuestionOptions").val() || "";
+            let options = [];
+            if (type === 1 || type === 2) { // Çoktan Seçmeli veya Checkbox ise
+                options = optionsRaw.split('\n').map(o => ({ text: o.trim() })).filter(o => o.text !== "");
+            }
+
+            // Ekleme mi düzenleme mi?
+            if (!questionId) {
+                // Ekleme
+                $.ajax({
+                    url: API + "/" + surveyId + "/questions",
+                    method: "POST",
+                    headers: AUTH,
+                    contentType: "application/json",
+                    data: JSON.stringify({
+                        text: text,
+                        type: type,
+                        isRequired: isRequired,
+                        options: options
+                    }),
+                    success: function() {
+                        $("#editQuestionModal").modal('hide');
+                        loadQuestions();
+                    },
+                    error: function(xhr) {
+                        let msg = "Soru eklenemedi!";
+                        if (xhr.responseJSON && xhr.responseJSON.errors) {
+                            msg += "<br>" + Object.values(xhr.responseJSON.errors).flat().join("<br>");
+                        }
+                        $("#editQuestionError").html(msg);
+                    }
+                });
+            } else {
+                // Güncelleme
+                $.ajax({
+                    url: API + "/" + surveyId + "/questions/" + questionId,
+                    method: "PUT",
+                    headers: AUTH,
+                    contentType: "application/json",
+                    data: JSON.stringify({
+                        text: text,
+                        type: type,
+                        isRequired: isRequired,
+                        options: options
+                    }),
+                    success: function() {
+                        $("#editQuestionModal").modal('hide');
+                        loadQuestions();
+                    },
+                    error: function(xhr) {
+                        let msg = "Soru güncellenemedi!";
+                        if (xhr.responseJSON && xhr.responseJSON.errors) {
+                            msg += "<br>" + Object.values(xhr.responseJSON.errors).flat().join("<br>");
+                        }
+                        $("#editQuestionError").html(msg);
+                    }
+                });
+            }
+        });
+
+        // Soru sil
+        function deleteQuestion(surveyId, questionId) {
+            if (!confirm("Soru silinsin mi?")) return;
+            $.ajax({
+                url: API + "/" + surveyId + "/questions/" + questionId,
+                method: "DELETE",
+                headers: AUTH,
+                success: function() { loadQuestions(); }
+            });
+        }
+
+        function questionTypeToText(t) {
+            switch(Number(t)) {
+                case 0: return "Kısa Metin";
+                case 1: return "Çoktan Seçmeli";
+                case 2: return "Checkbox";
+                case 3: return "Puanlama";
+                case 4: return "Evet/Hayır";
+                default: return "Bilinmiyor";
+            }
+        }
+
+        $(function() {
+            loadQuestions();
+        });
+    </script>
+}
