@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SurveyPortalUI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fe5dce21063058bceab6a18d72203c2de7106925")]
 [assembly: System.Reflection.AssemblyProductAttribute("SurveyPortalUI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SurveyPortalUI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

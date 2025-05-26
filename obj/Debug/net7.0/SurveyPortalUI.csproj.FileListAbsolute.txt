@@ -66,3 +66,4 @@ C:\Users\mahir\OneDrive\Masaüstü\anketproje\SurveyPortalUI\obj\Debug\net7.0\re
 C:\Users\mahir\OneDrive\Masaüstü\anketproje\SurveyPortalUI\obj\Debug\net7.0\SurveyPortalUI.pdb
 C:\Users\mahir\OneDrive\Masaüstü\anketproje\SurveyPortalUI\obj\Debug\net7.0\SurveyPortalUI.genruntimeconfig.cache
 C:\Users\mahir\OneDrive\Masaüstü\anketproje\SurveyPortalUI\obj\Debug\net7.0\ref\SurveyPortalUI.dll
+C:\Users\mahir\OneDrive\Masaüstü\anketproje\SurveyPortalUI\obj\Debug\net7.0\SurveyPortalUI.sourcelink.json
